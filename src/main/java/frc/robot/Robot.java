@@ -27,9 +27,12 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 public class Robot extends TimedRobot {
 
   private CANSparkMax shooter;
+  private CANSparkMax spinup;
   private TalonSRX upperBelt;
   private TalonSRX lowerBelt;
   private Joystick controller;
+
+  private static final double SHOOTER_RATIO = 3./5.;
 
   /**
    * This function is run when the robot is first started up and should be used
@@ -39,17 +42,20 @@ public class Robot extends TimedRobot {
   public void robotInit() {
     shooter = new CANSparkMax(1, MotorType.kBrushless);
     shooter.restoreFactoryDefaults();
-    SmartDashboard.putNumber("kP", 0);
-    SmartDashboard.putNumber("kI", 0);
+    SmartDashboard.putNumber("kP", 0.00015);
+    SmartDashboard.putNumber("kI", 0.0000001);
     SmartDashboard.putNumber("kD", 0);
-    SmartDashboard.putNumber("kF", 0);
-    SmartDashboard.putNumber("IZone", 0);
+    SmartDashboard.putNumber("kF", 0.00018);
+    SmartDashboard.putNumber("IZone", 250);
     SmartDashboard.putNumber("IMax", 0);
-    SmartDashboard.putNumber("Command Speed", 0);
+    SmartDashboard.putNumber("Command Speed", 6800);
 
-    upperBelt = new TalonSRX(2);
+    spinup = new CANSparkMax(2, MotorType.kBrushless);
+    spinup.restoreFactoryDefaults();
+
+    upperBelt = new TalonSRX(3);
     upperBelt.configFactoryDefault();
-    lowerBelt = new TalonSRX(3);
+    lowerBelt = new TalonSRX(4);
     lowerBelt.configFactoryDefault();
 
     controller = new Joystick(0);
@@ -69,17 +75,21 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopPeriodic() {
-    shooter.getPIDController().setP(SmartDashboard.getNumber("kP", 0.00004));
+    shooter.getPIDController().setP(SmartDashboard.getNumber("kP", 0.00015));
     shooter.getPIDController().setI(SmartDashboard.getNumber("kI", 0.0000001));
     shooter.getPIDController().setD(SmartDashboard.getNumber("kD", 0));
-    shooter.getPIDController().setFF(SmartDashboard.getNumber("kF", 0.00017));
-    shooter.getPIDController().setIZone(SmartDashboard.getNumber("IZone", 500));
+    shooter.getPIDController().setFF(SmartDashboard.getNumber("kF", 0.00018));
+    shooter.getPIDController().setIZone(SmartDashboard.getNumber("IZone", 250));
     shooter.getPIDController().setIMaxAccum(SmartDashboard.getNumber("IMax", 0), 0);
     
-    shooter.getPIDController().setReference(controller.getRawButton(6) ? SmartDashboard.getNumber("Command Speed", 0) : 0, ControlType.kVelocity);
-    
-    SmartDashboard.putNumber("Actual Speed", shooter.getEncoder().getVelocity());
+    shooter.getPIDController().setReference(controller.getRawButton(6) ? SmartDashboard.getNumber("Command Speed", 0) * SHOOTER_RATIO : 0, ControlType.kVelocity);
+
+    SmartDashboard.putNumber("Actual Speed", shooter.getEncoder().getVelocity() / SHOOTER_RATIO);
     SmartDashboard.putNumber("Current", shooter.getOutputCurrent());
+
+    spinup.set(controller.getRawButton(5) ? 1 : 0);
+
+    SmartDashboard.putNumber("Spinup Speed", spinup.getEncoder().getVelocity());
 
     double indexerSpeed = controller.getRawAxis(3);
     upperBelt.set(ControlMode.PercentOutput, indexerSpeed);
